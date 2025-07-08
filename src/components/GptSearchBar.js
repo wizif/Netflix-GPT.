@@ -5,20 +5,17 @@ import { API_OPTIONS } from "../utils/constants";
 import { addGptMovieResult } from "../utils/gptSlice";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Load your Gemini API key from environment
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY); // or process.env...
+// ✅ Load your Gemini API key from environment
+const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY);
 
 const GptSearchBar = () => {
   const dispatch = useDispatch();
   const langKey = useSelector((store) => store.config.lang);
   const searchText = useRef(null);
 
-  // search movie in TMDB
   const searchMovieTMDB = async (movie) => {
     const data = await fetch(
-      "https://api.themoviedb.org/3/search/movie?query=" +
-        movie +
-        "&include_adult=false&language=en-US&page=1",
+      `https://api.themoviedb.org/3/search/movie?query=${movie}&include_adult=false&language=en-US&page=1`,
       API_OPTIONS
     );
     const json = await data.json();
@@ -27,7 +24,7 @@ const GptSearchBar = () => {
 
   const handleGptSearchClick = async () => {
     const query = searchText.current.value;
-    console.log(query);
+    console.log("User query:", query);
 
     const gptQuery =
       "Act as a Movie Recommendation system and suggest some movies for the query: " +
@@ -35,14 +32,15 @@ const GptSearchBar = () => {
       ". Only give me names of 5 movies, comma separated like: Gadar, Sholay, Don, Golmaal, Koi Mil Gaya";
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
       const result = await model.generateContent(gptQuery);
-      const response = await result.response.text();
+      const response = result.response;
+      const text = response.text();
 
-      console.log("Gemini Response:", response);
+      console.log("Gemini response:", text);
 
-      const gptMovies = response.split(",").map((movie) => movie.trim());
+      const gptMovies = text.split(",").map((movie) => movie.trim());
 
       const promiseArray = gptMovies.map((movie) => searchMovieTMDB(movie));
       const tmdbResults = await Promise.all(promiseArray);
@@ -52,7 +50,6 @@ const GptSearchBar = () => {
       );
     } catch (error) {
       console.error("Gemini API error:", error);
-      // TODO: Show user-friendly error
     }
   };
 
